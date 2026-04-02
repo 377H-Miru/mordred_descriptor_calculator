@@ -1,15 +1,16 @@
-
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Results
-*_descriptors.csv
+# Data and logs
+*.csv
+*.tsv
+*.sdf
+*.log
+outputs/
+results/
 
-# Samples / Results in samples
-sample_data/*_descriptors.csv
-
-# Config
-temp_config.json
-robust_test_config.json
+# OS files
+.DS_Store
+Thumbs.db
