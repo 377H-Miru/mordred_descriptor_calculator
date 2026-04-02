@@ -1,7 +1,0 @@
-
-{
-  "input_path": "test_molecules.sdf",
-  "output_path": "./",
-  "smiles_col": null,
-  "name_col": null
-}
