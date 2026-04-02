@@ -27,8 +27,19 @@ python calculate_descriptors.py
 ```
 
 #### 2. Batch Mode
+Run with a configuration file:
 ```bash
 python calculate_descriptors.py --config job_config.json
+```
+
+**Example `job_config.json`**:
+```json
+{
+  "input_path": "path/to/your_molecules.sdf",
+  "output_path": "./output_directory",
+  "smiles_col": "SMILES",
+  "name_col": "Compound_ID"
+}
 ```
 
 ---
@@ -40,8 +51,6 @@ python calculate_descriptors.py --config job_config.json
 SDFまたはCSV/TSV/SMILESファイルから、標準Mordred記述子および $\pi$共役系特化のカスタム記述子（合計1,900種類以上）を計算するツールです。
 
 ### インストール方法
-仮想環境（venvまたはconda）の使用を推奨します。
-
 1. **リポジトリをクローンまたはダウンロード**します。
 2. **依存ライブラリのインストール**:
    ```bash
@@ -53,4 +62,19 @@ SDFまたはCSV/TSV/SMILESファイルから、標準Mordred記述子および $
 引数なしで実行すると、対話形式でファイルを選択できます：
 ```bash
 python calculate_descriptors.py
+```
+
+#### 2. バッチモード (設定ファイルを使用)
+```bash
+python calculate_descriptors.py --config job_config.json
+```
+
+**`job_config.json` の記述例**:
+```json
+{
+  "input_path": "入力ファイルのパス.sdf",
+  "output_path": "./出力ディレクトリ",
+  "smiles_col": "SMILES",
+  "name_col": "ID"
+}
 ```
