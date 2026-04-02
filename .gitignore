@@ -1,0 +1,15 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Results
+*_descriptors.csv
+
+# Samples / Results in samples
+sample_data/*_descriptors.csv
+
+# Config
+temp_config.json
+robust_test_config.json
