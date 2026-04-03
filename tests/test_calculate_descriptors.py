@@ -1,3 +1,5 @@
+import numpy as np
+if not hasattr(np, "product"): np.product = np.prod
 import sys, os
 import pytest
 from rdkit import Chem
