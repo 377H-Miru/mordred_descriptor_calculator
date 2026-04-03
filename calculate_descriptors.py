@@ -4,7 +4,11 @@ import warnings
 import argparse
 import json
 import concurrent.futures
+
+# Monkey-patch for mordred compatibility with modern numpy (CRITICAL: MUST BE BEFORE MORDRED IMPORT)
 import numpy as np
+if not hasattr(np, 'product'): np.product = np.prod
+
 import networkx as nx
 import pandas as pd
 from mordred import Calculator, descriptors
@@ -14,9 +18,6 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem.MolStandardize import rdMolStandardize
 from tqdm import tqdm
-
-# Monkey-patch for numpy 1.25+ compatibility
-if not hasattr(np, 'product'): np.product = np.prod
 
 def preprocess_molecule(mol, seed=42):
     """Standardize molecule and generate 3D conformer with fixed seed."""
@@ -30,9 +31,9 @@ def preprocess_molecule(mol, seed=42):
         
         mol = Chem.AddHs(mol)
         params = AllChem.ETKDGv3()
-        params.randomSeed = seed # FIXED SEED FOR REPRODUCIBILITY
+        params.randomSeed = seed
         if AllChem.EmbedMolecule(mol, params) == -1:
-            return None # Skip if 3D embedding fails
+            return None
         return mol
     except: return None
 
@@ -75,7 +76,6 @@ def calc_conjugation_features(mol):
 def setup_mordred_calculator():
     """Create and configure a Mordred calculator."""
     calc = Calculator(descriptors.all, ignore_3D=False)
-    # Register additional PathCount descriptors for flexibility
     for i in range(1, 51):
         try:
             calc.register(PathCount(order=i, pi=False))
@@ -99,17 +99,9 @@ def main():
     else:
         sys.exit("Please provide --config file. See README for example.")
 
-    calc = Calculator(descriptors.all, ignore_3D=False)
-    # Register additional PathCount descriptors
-    for i in range(1, 51):
-        try:
-            calc.register(PathCount(order=i, pi=False))
-            calc.register(PathCount(order=i, pi=True))
-        except: pass
-
+    calc = setup_mordred_calculator()
     print(f"Reproducible mode enabled. Seed: {args.seed}")
     
-    # Load and process
     df_in = pd.read_csv(in_path)
     mols, props, errors = [], [], []
     
@@ -137,7 +129,7 @@ def main():
         print(f"Results saved to {out_path}")
     
     if errors:
-        print(f"Warning: {len(errors)} molecules failed. Check errors.log.")
+        print(f"Warning: {len(errors)} molecules failed. Check calculation_errors.log.")
         pd.DataFrame(errors).to_csv("calculation_errors.log", index=False)
 
 if __name__ == "__main__":
