@@ -1,16 +1,5 @@
-# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*$py.class
-
-# Data and logs
-*.csv
-*.tsv
-*.sdf
 *.log
-outputs/
 results/
-
-# OS files
-.DS_Store
-Thumbs.db
+.pytest_cache/
