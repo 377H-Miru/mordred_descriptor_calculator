@@ -123,6 +123,7 @@ def main():
 
     if mols:
         calc = setup_mordred_calculator()
+        print("\nStarting Mordred descriptor calculation...")
         m_df = calc.pandas(mols, nproc=os.cpu_count(), quiet=False)
         m_df = m_df.apply(pd.to_numeric, errors='coerce')
         
