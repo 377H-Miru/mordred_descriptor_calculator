@@ -72,6 +72,17 @@ def calc_conjugation_features(mol):
         return res
     except: return res
 
+def setup_mordred_calculator():
+    """Create and configure a Mordred calculator."""
+    calc = Calculator(descriptors.all, ignore_3D=False)
+    # Register additional PathCount descriptors for flexibility
+    for i in range(1, 51):
+        try:
+            calc.register(PathCount(order=i, pi=False))
+            calc.register(PathCount(order=i, pi=True))
+        except: pass
+    return calc
+
 def main():
     warnings.filterwarnings('ignore')
     parser = argparse.ArgumentParser(description="Reproducible Descriptor Calculator.")
