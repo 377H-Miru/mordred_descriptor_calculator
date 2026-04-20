@@ -21,8 +21,32 @@ from rdkit.Chem import AllChem
 from rdkit.Chem.MolStandardize import rdMolStandardize
 from tqdm import tqdm
 
+def browse_files(current_dir="."):
+    """Interactive file browser."""
+    while True:
+        try:
+            current_dir = os.path.abspath(current_dir)
+            items = sorted(os.listdir(current_dir))
+            valid_items = [i for i in items if os.path.isdir(os.path.join(current_dir, i)) 
+                           or i.lower().endswith(('.csv', '.tsv', '.txt'))]
+            print(f"\n[ Current Directory: {current_dir} ]")
+            print("0: .. (Go up)")
+            for idx, item in enumerate(valid_items, 1):
+                suffix = "/" if os.path.isdir(os.path.join(current_dir, item)) else ""
+                print(f"{idx}: {item}{suffix}")
+            choice = input("\nSelect a number, or 'q' to quit > ").strip()
+            if choice.lower() == 'q': sys.exit("Cancelled.")
+            idx = int(choice)
+            if idx == 0:
+                current_dir = os.path.join(current_dir, "..")
+            elif 1 <= idx <= len(valid_items):
+                selected = os.path.join(current_dir, valid_items[choice-1])
+                if os.path.isdir(selected): current_dir = selected
+                else: return selected
+        except: print("Invalid input.")
+
 def preprocess_worker(args):
-    """Worker function for parallel preprocessing with deterministic seed."""
+    """Worker function for parallel preprocessing."""
     smiles, props, seed, optimize = args
     if pd.isna(smiles) or str(smiles).strip() == "" or str(smiles) == "nan":
         return None, None, {"smiles": "Empty", "reason": "Data Error: SMILES is empty"}
@@ -48,7 +72,6 @@ def preprocess_worker(args):
         return None, None, {"smiles": smiles, "reason": f"Exception: {str(e)}"}
 
 def calc_conjugation_features(mol):
-    """Custom features for pi-conjugated systems."""
     res = {"Conjugation_Count": 0, "Conjugation_MaxAtomCount": 0, "Conjugation_MaxLength": 0, "Conjugation_BLA": np.nan, "Conjugation_GraphEnergy": 0.0}
     if mol is None or mol.GetNumConformers() == 0: return res
     try:
@@ -87,7 +110,7 @@ def setup_mordred_calculator():
 
 def main():
     warnings.filterwarnings('ignore')
-    parser = argparse.ArgumentParser(description="Professional & Reproducible Descriptor Calculator.")
+    parser = argparse.ArgumentParser(description="Deterministic & Reproducible Descriptor Calculator.")
     parser.add_argument('--config', help='JSON configuration file.')
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--no-optimize', action='store_true')
@@ -95,38 +118,39 @@ def main():
     args = parser.parse_args()
 
     if not args.config:
-        print("\n--- Mordred Calculator (Interactive Mode) ---")
-        in_path = input("Enter input CSV/TSV path > ").strip()
-        if not os.path.exists(in_path): sys.exit("File not found.")
-        out_path = input("Enter output CSV path [default: results.csv] > ").strip() or "results.csv"
-        smiles_col = input("Enter SMILES column name [default: smiles] > ").strip() or "smiles"
+        print("\n" + "="*50 + "\n   Mordred Calculator - Interactive Setup\n" + "="*50)
+        in_path = browse_files()
+        try:
+            df_peek = pd.read_csv(in_path, nrows=1, sep=None, engine='python')
+            print(f"\nColumns: {list(df_peek.columns)}")
+            smiles_col = input(f"Enter SMILES column [default: {df_peek.columns[0]}] > ").strip() or df_peek.columns[0]
+        except: sys.exit("Could not read file.")
+        out_path = input("Enter output CSV path [default: results_descriptors.csv] > ").strip() or "results_descriptors.csv"
+        seed, optimize, chunksize = args.seed, not args.no_optimize, args.chunksize
     else:
         with open(args.config, 'r', encoding='utf-8') as f: config = json.load(f)
         in_path, out_path = config['input_path'], config['output_path']
         smiles_col = config.get('smiles_col', 'smiles')
+        seed, optimize, chunksize = args.seed, not args.no_optimize, args.chunksize
 
     calc = setup_mordred_calculator()
     global_count = 0
     first_chunk = True
     n_workers = os.cpu_count() or 1
 
-    print(f"Processing in chunks of {args.chunksize} using {n_workers} workers...")
+    print(f"\nProcessing {in_path} in chunks of {chunksize}...")
     
-    # Process in chunks to handle huge datasets
-    for chunk in pd.read_csv(in_path, sep=None, engine='python', chunksize=args.chunksize):
-        tasks = []
-        for i, row in enumerate(chunk.to_dict('records')):
-            tasks.append((row[smiles_col], row, args.seed + global_count + i, not args.no_optimize))
+    for chunk in pd.read_csv(in_path, sep=None, engine='python', chunksize=chunksize):
+        tasks = [(row[smiles_col], row, seed + global_count + i, optimize) 
+                 for i, row in enumerate(chunk.to_dict('records'))]
         
         mols, props, errors = [], [], []
         with concurrent.futures.ProcessPoolExecutor(max_workers=n_workers) as executor:
-            results = list(tqdm(executor.map(preprocess_worker, tasks), total=len(tasks), desc=f"Chunk {global_count//args.chunksize + 1} Prep", leave=False))
+            results = list(tqdm(executor.map(preprocess_worker, tasks), total=len(tasks), desc=f"Chunk {global_count//chunksize + 1} Prep", leave=False))
 
         for mol, p, err in results:
-            if mol:
-                mols.append(mol); props.append(p)
-            else:
-                errors.append(err)
+            if mol: mols.append(mol); props.append(p)
+            else: errors.append(err)
 
         if mols:
             m_df = calc.pandas(mols, nproc=n_workers, quiet=True)
@@ -134,7 +158,6 @@ def main():
             with concurrent.futures.ProcessPoolExecutor(max_workers=n_workers) as executor:
                 c_list = list(executor.map(calc_conjugation_features, mols))
             c_df = pd.DataFrame(c_list)
-            
             final_df = pd.concat([pd.DataFrame(props).reset_index(drop=True), m_df.reset_index(drop=True), c_df.reset_index(drop=True)], axis=1)
             final_df.to_csv(out_path, index=False, header=first_chunk, mode='a' if not first_chunk else 'w', encoding='utf-8-sig')
             first_chunk = False
@@ -142,10 +165,9 @@ def main():
         if errors:
             err_file = out_path + ".errors.log"
             pd.DataFrame(errors).to_csv(err_file, index=False, mode='a', header=not os.path.exists(err_file))
-            
         global_count += len(chunk)
 
-    print(f"\nDone. Results saved to {out_path}")
+    print(f"\nSuccess. Results in {out_path}")
 
 if __name__ == "__main__":
     main()
