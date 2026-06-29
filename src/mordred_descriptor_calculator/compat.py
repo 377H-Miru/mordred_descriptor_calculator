@@ -3,21 +3,27 @@ import numpy as np
 
 def patch_numpy_for_mordred_compat():
     """
-    Mordred may reference deprecated NumPy aliases in some environments.
-    This compatibility shim maps np.product to np.prod, np.float to float, etc.
+    Mordred references deprecated NumPy aliases (specifically np.product and np.typeDict) removed in modern NumPy versions.
+    This compatibility shim maps missing aliases to their modern equivalents safely without corrupting Pandas C-extensions.
     """
     if not hasattr(np, 'product'):
-        np.product = np.prod
-    if not hasattr(np, 'float'):
-        np.float = float
-    if not hasattr(np, 'int'):
-        np.int = int
-    if not hasattr(np, 'bool'):
-        np.bool = bool
+        try:
+            setattr(np, 'product', np.prod)
+        except Exception:
+            pass
+    if not hasattr(np, 'cumproduct'):
+        try:
+            setattr(np, 'cumproduct', np.cumprod)
+        except Exception:
+            pass
     if not hasattr(np, 'typeDict'):
-        np.typeDict = np.sctypeDict
+        try:
+            setattr(np, 'typeDict', np.sctypeDict)
+        except Exception:
+            pass
+
     if 'numpy.core.fromnumeric' in sys.modules:
         try:
-            setattr(sys.modules['numpy.core.fromnumeric'], 'product', np.prod)
+            setattr(sys.modules['numpy.core.fromnumeric'], 'product', getattr(np, 'prod', None))
         except Exception:
             pass

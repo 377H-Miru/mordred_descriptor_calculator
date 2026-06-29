@@ -16,7 +16,7 @@ Requires-Dist: rdkit
 Requires-Dist: mordred
 Requires-Dist: networkx<3,>=2.8
 Requires-Dist: pandas
-Requires-Dist: numpy<1.24,>=1.23
+Requires-Dist: numpy<2.0.0
 Requires-Dist: tqdm
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"

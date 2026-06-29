@@ -1,0 +1,4 @@
+import pytest
+from mordred_descriptor_calculator.compat import patch_numpy_for_mordred_compat
+
+patch_numpy_for_mordred_compat()

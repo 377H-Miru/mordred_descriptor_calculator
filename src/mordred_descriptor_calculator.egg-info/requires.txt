@@ -2,7 +2,7 @@ rdkit
 mordred
 networkx<3,>=2.8
 pandas
-numpy<1.24,>=1.23
+numpy<2.0.0
 tqdm
 
 [dev]
