@@ -18,9 +18,12 @@ setup(
         "mordred",
         "networkx",
         "pandas",
-        "numpy",
+        "numpy<2.0.0",
         "tqdm",
     ],
+    extras_require={
+        "dev": ["pytest"],
+    },
     entry_points={
         "console_scripts": [
             "mordred-desc=mordred_descriptor_calculator.cli:main",

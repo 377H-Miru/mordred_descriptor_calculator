@@ -24,8 +24,13 @@ dependencies = [
     "mordred",
     "networkx",
     "pandas",
-    "numpy",
+    "numpy<2.0.0",
     "tqdm",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
 ]
 
 [project.scripts]
