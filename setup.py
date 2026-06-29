@@ -16,9 +16,9 @@ setup(
     install_requires=[
         "rdkit",
         "mordred",
-        "networkx",
-        "pandas",
-        "numpy<2.0.0",
+        "networkx>=2.8,<3",
+        "pandas>=1.5,<2.0",
+        "numpy>=1.23,<1.24",
         "tqdm",
     ],
     extras_require={
@@ -32,7 +32,6 @@ setup(
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],

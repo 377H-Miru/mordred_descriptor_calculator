@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10"]
 
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +25,11 @@ jobs:
         run: |
           pip install -U pip
           pip install -e ".[dev]"
+
+      - name: Verify installed package versions
+        run: |
+          python -c "import numpy; print('NumPy version:', numpy.__version__)"
+          python -c "import mordred; print('Mordred version:', mordred.__version__)"
 
       - name: Test with pytest
         run: |

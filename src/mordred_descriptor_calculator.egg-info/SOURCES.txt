@@ -13,4 +13,5 @@ src/mordred_descriptor_calculator.egg-info/dependency_links.txt
 src/mordred_descriptor_calculator.egg-info/entry_points.txt
 src/mordred_descriptor_calculator.egg-info/requires.txt
 src/mordred_descriptor_calculator.egg-info/top_level.txt
-tests/test_calculate_descriptors.py
+tests/test_calculator.py
+tests/test_cli.py

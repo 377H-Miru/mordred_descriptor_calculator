@@ -1,6 +1,9 @@
 rdkit
 mordred
-networkx
+networkx<3,>=2.8
 pandas
-numpy
+numpy<1.24,>=1.23
 tqdm
+
+[dev]
+pytest

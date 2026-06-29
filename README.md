@@ -6,7 +6,8 @@
 分子SMILESデータから **Mordred 記述子**（2D/3D）および**カスタム共役系記述子（Conjugation features）**を計算・抽出する公開グレードのコマンドラインツール（CLI）です。
 
 ## 動作要件 (Requirements)
-- **Python 3.10 以上** (Python 3.10 / 3.11 推奨)
+- **Python 3.10 推奨 (Python 3.10 recommended)**
+- (※ Python 3.11 以上は未検証・実験的サポートです)
 
 ---
 
