@@ -68,14 +68,6 @@ def main():
     
     args = parser.parse_args()
     
-    # Setup logging level
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
-    elif args.quiet:
-        logging.basicConfig(level=logging.ERROR, format='%(levelname)s: %(message)s')
-    else:
-        logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-        
     # --- Config merging ---
     config = {}
     if args.config:
@@ -86,6 +78,16 @@ def main():
                 config = json.load(f)
         except Exception as e:
             sys.exit(f"Error parsing configuration JSON: {e}")
+            
+    # Setup logging level with config support
+    is_verbose = args.verbose or config.get('verbose', False)
+    is_quiet = args.quiet or config.get('quiet', False)
+    if is_verbose:
+        logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+    elif is_quiet:
+        logging.basicConfig(level=logging.ERROR, format='%(levelname)s: %(message)s')
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
             
     input_file = args.input or config.get('input_path') or config.get('input')
     output_file = args.output or config.get('output_path') or config.get('output')
@@ -164,7 +166,7 @@ def main():
     except Exception:
         total_rows = None
 
-    if not args.quiet:
+    if not is_quiet:
         print(f"\nProcessing {input_file} -> {output_file}")
         print(f"Settings: 3D={include_3d}, Conjugation={include_conjugation}, Standardize={standardize}, Desalt={desalt}, Workers={workers}")
 
@@ -203,7 +205,7 @@ def main():
                 
         if mols:
             try:
-                m_df = calc.pandas(mols, nproc=workers, quiet=args.quiet)
+                m_df = calc.pandas(mols, nproc=workers, quiet=is_quiet)
                 m_df = m_df.apply(pd.to_numeric, errors='coerce')
             except Exception as me:
                 for idx, p in enumerate(props):
@@ -268,7 +270,7 @@ def main():
             
         global_count += len(chunk)
 
-    if not args.quiet:
+    if not is_quiet:
         print(f"\nSuccess. Results saved to {output_file}")
 
 if __name__ == '__main__':
