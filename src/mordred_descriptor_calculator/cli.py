@@ -7,7 +7,6 @@ import warnings
 import concurrent.futures
 import pandas as pd
 import numpy as np
-from tqdm import tqdm
 
 from .compat import patch_numpy_for_mordred_compat
 from .core import preprocess_worker, setup_mordred_calculator
@@ -42,10 +41,12 @@ def main():
     
     parser.add_argument('--output-format', choices=['csv', 'tsv'], help='Output format (default: auto-detected from extension)')
     
-    # Computation modes
+    # Computation modes (Mutually exclusive 2D / 3D flags)
     mode_group = parser.add_argument_group('Computation Modes')
-    mode_group.add_argument('--only-2d', action='store_true', default=True, help='Compute 2D descriptors only without 3D embedding (default: True)')
-    mode_group.add_argument('--include-3d', action='store_true', help='Include 3D descriptors and 3D embedding')
+    dim_group = mode_group.add_mutually_exclusive_group()
+    dim_group.add_argument('--only-2d', action='store_true', help='Explicitly specify 2D descriptors only without 3D embedding')
+    dim_group.add_argument('--include-3d', action='store_true', help='Include 3D descriptors and 3D embedding')
+    
     mode_group.add_argument('--include-conjugation', action='store_true', help='Include custom conjugation descriptors')
     mode_group.add_argument('--mordred-only', action='store_true', help='Calculate Mordred descriptors only (exclude conjugation)')
     
@@ -53,7 +54,6 @@ def main():
     io_group = parser.add_argument_group('Output Filtering & Formatting')
     io_group.add_argument('--keep-input-cols', action='store_true', default=True, help='Keep all input columns in output (default: True)')
     io_group.add_argument('--minimal-output', action='store_true', help='Keep only ID, canonical_smiles, and descriptors in output')
-    io_group.add_argument('--descriptor-set', choices=['all', '2d', '3d'], default='all', help='Mordred descriptor subset to calculate (default: all)')
     io_group.add_argument('--drop-all-na', action='store_true', help='Drop descriptor columns where all values are NaN')
     io_group.add_argument('--drop-constant', action='store_true', help='Drop descriptor columns with constant values')
     io_group.add_argument('--missing-value', choices=['nan', 'blank'], default='nan', help='Format missing descriptor values as NaN or blank string')
@@ -104,11 +104,10 @@ def main():
 
     # Computation mode flags resolution
     include_3d = args.include_3d or config.get('include_3d', False)
-    if include_3d:
-        ignore_3d = False
-    else:
-        ignore_3d = True
+    if args.only_2d:
+        include_3d = False
         
+    ignore_3d = not include_3d
     include_conjugation = (args.include_conjugation or config.get('include_conjugation', False)) and not args.mordred_only
     optimize = not args.no_optimize and config.get('optimize', True)
     standardize = args.standardize
@@ -150,7 +149,7 @@ def main():
     if id_col and id_col not in available_cols:
         sys.exit(f"Error: ID column '{id_col}' not found in input file. Available columns: {available_cols}")
 
-    calc = setup_mordred_calculator(ignore_3d=ignore_3d, descriptor_set=args.descriptor_set)
+    calc = setup_mordred_calculator(ignore_3d=ignore_3d)
     
     global_count = 0
     first_chunk = True
@@ -174,10 +173,7 @@ def main():
         mols, canonical_smiles_list, props, errors = [], [], [], []
         
         if workers <= 1:
-            if not args.quiet:
-                prep_results = list(map(preprocess_worker, tasks))
-            else:
-                prep_results = list(map(preprocess_worker, tasks))
+            prep_results = list(map(preprocess_worker, tasks))
         else:
             with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
                 prep_results = list(executor.map(preprocess_worker, tasks))
@@ -191,10 +187,28 @@ def main():
                 errors.append(err)
                 
         if mols:
-            # Compute Mordred descriptors
-            m_df = calc.pandas(mols, nproc=workers, quiet=args.quiet)
-            m_df = m_df.apply(pd.to_numeric, errors='coerce')
-            
+            # Compute Mordred descriptors with error handling
+            try:
+                m_df = calc.pandas(mols, nproc=workers, quiet=args.quiet)
+                m_df = m_df.apply(pd.to_numeric, errors='coerce')
+            except Exception as me:
+                # Log mordred stage failure for all mols in chunk
+                for idx, p in enumerate(props):
+                    mol_id = str(p.get(id_col)) if id_col and id_col in p else f"ID_{global_count + idx}"
+                    errors.append({
+                        'row_index': global_count + idx,
+                        'ID': mol_id,
+                        'input_smiles': str(p.get(smiles_col, '')),
+                        'stage': 'mordred',
+                        'error_type': type(me).__name__,
+                        'error_message': str(me)
+                    })
+                if errors:
+                    err_df = pd.DataFrame(errors)
+                    err_sep = "," if output_format == 'csv' else "\t"
+                    err_df.to_csv(err_file, sep=err_sep, index=False, mode='a', header=not os.path.exists(err_file), encoding='utf-8-sig')
+                sys.exit(f"Error during Mordred calculation stage: {me}")
+
             # Compute conjugation features if enabled
             if include_conjugation:
                 if workers <= 1:

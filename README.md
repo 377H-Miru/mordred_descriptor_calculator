@@ -3,12 +3,16 @@
 ![CI](https://github.com/377H-Miru/mordred_descriptor_calculator/actions/workflows/python-package.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-分子SMILESデータから **Mordred 記述子**（2D/3D）および**カスタム共役系記述子（Conjugation features）**を高速かつ堅牢に計算・算出する公開グレードのコマンドラインツール（CLI）です。
+分子SMILESデータから **Mordred 記述子**（2D/3D）および**カスタム共役系記述子（Conjugation features）**を計算・抽出する公開グレードのコマンドラインツール（CLI）です。
+
+## 動作要件 (Requirements)
+- **Python 3.10 以上** (Python 3.10 / 3.11 推奨)
+
+---
 
 ## 主な機能・特徴
-- **柔軟な計算モード**: デフォルトは計算が高速で安定した `--only-2d` モード。必要に応じて `--include-3d` や `--include-conjugation` を指定可能。
-- **堅牢な多段階エラーハンドリング**: SMILESパース、分子標準化、脱塩、3D座標生成（ETKDGv3）、構造最適化（MMFF/UFF）の各段階で発生したエラーを詳細に分類し、`.errors.csv` / `.errors.tsv` へ出力。
-- **安全な並列処理管理**: 前処理フェーズと Mordred 計算フェーズでプロセス競合（Nested Multiprocessing）が発生しないよう段階的にワーカーを制御。
+- **柔軟な計算モード**: デフォルトは計算が高速で安定した 2D モード（`--only-2d`）。必要に応じて `--include-3d` や `--include-conjugation` を指定可能（`--only-2d` と `--include-3d` は排他的オプション）。
+- **構造化エラーハンドリングと透過性**: SMILESパース、分子標準化、脱塩、3D座標生成、力場最適化、Mordred計算の各段階（`stage`）で発生した例外を記録し、`.errors.csv` / `.errors.tsv` へ出力。共役系計算中の例外も `Conjugation_Error` 列へ明示的に記録され、正常な非共役分子と区別されます。
 - **モダンなPython互換性**: 近年の NumPy バージョンで非推奨・削除された `np.product` 等のエイリアスに対する自動互換性シムを内蔵。
 
 ---
@@ -70,8 +74,8 @@ mordred-desc --config job_config.json --overwrite
 ---
 
 ## 計算モードと 2D/3D 記述子について
-- **`--only-2d`（デフォルト推薦）**: 2D分子構造のみに基づく記述子を計算します。高速で失敗リスクが極めて低いモードです。
-- **`--include-3d`**: ETKDGv3 アルゴリズムにより 3D 座標を生成・力場最適化し、Mordred 3D 記述子を算出します。
+- **2D モード（デフォルト）**: 2D分子構造のみに基づく記述子を計算します。高速で失敗リスクが極めて低いモードです（明示する場合は `--only-2d`）。
+- **`--include-3d`**: ETKDGv3 アルゴリズムにより 3D 座標を生成・力場最適化し、Mordred 3D 記述子を算出します（`--only-2d` と同時指定不可）。
 - **`--include-conjugation`**: $\pi$ 共役系の網羅的探索、共役系原子数、共役長、BLA（Bond Length Alternation）、グラフエネルギーなどのカスタム共役系記述子を追加算出します。
 
 ### 3D構造生成の再現性
@@ -79,9 +83,10 @@ mordred-desc --config job_config.json --overwrite
 
 ---
 
-## `--workers` と計算パフォーマンス
-- `--workers 1`（デフォルト）: シングルプロセスで逐次処理を行います。メモリ消費が最も少なく安全です。
-- `--workers N`（N > 1）: `ProcessPoolExecutor` により前処理および Mordred 計算をマルチプロセス化します。前処理完了後に Mordred の並列計算を開始する設計となっており、CPUsの過剰消費やデッドロックを防ぎます。
+## `--workers` と計算パフォーマンスについて
+- **`--workers 1`（デフォルト）**: 最も安全で推奨される動作モードです。メモリ消費を最小限に抑えます。
+- **`--workers N`（N > 1）**: 前処理・Mordred計算・共役系計算の各フェーズで段階的に並列化が行われます。
+  - 大規模データでは CPU およびメモリ消費量が増加するため、共有サーバーやリソース制限のある環境では小さな値から試行してください。
 
 ---
 

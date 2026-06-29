@@ -108,17 +108,11 @@ def preprocess_worker(args):
         }
         return None, canonical_smiles, props, err_entry
 
-def setup_mordred_calculator(ignore_3d=True, descriptor_set="all"):
+def setup_mordred_calculator(ignore_3d=True):
     """
     Build and configure Mordred Calculator.
     """
-    if descriptor_set == "2d":
-        calc = Calculator(descriptors, ignore_3D=True)
-    elif descriptor_set == "3d":
-        calc = Calculator(descriptors, ignore_3D=False)
-    else:
-        calc = Calculator(descriptors.all, ignore_3D=ignore_3d)
-        
+    calc = Calculator(descriptors.all, ignore_3D=ignore_3d)
     for i in range(1, 51):
         try:
             calc.register(PathCount(order=i, pi=False))

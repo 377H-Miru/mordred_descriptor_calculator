@@ -4,16 +4,18 @@ import numpy as np
 def calc_conjugation_features(mol):
     """
     Calculate conjugation descriptors for an RDKit Mol object.
-    Returns a dictionary of conjugation features.
+    Returns a dictionary of conjugation features, including Conjugation_Error on failure.
     """
     res = {
         "Conjugation_Count": 0,
         "Conjugation_MaxAtomCount": 0,
         "Conjugation_MaxLength": 0,
         "Conjugation_BLA": np.nan,
-        "Conjugation_GraphEnergy": 0.0
+        "Conjugation_GraphEnergy": 0.0,
+        "Conjugation_Error": ""
     }
     if mol is None:
+        res["Conjugation_Error"] = "Molecule is None"
         return res
     try:
         conjugated_bonds = [b for b in mol.GetBonds() if b.GetIsConjugated()]
@@ -43,7 +45,7 @@ def calc_conjugation_features(mol):
         if sub.number_of_nodes() > 1:
             try:
                 res["Conjugation_MaxLength"] = nx.diameter(sub)
-            except Exception:
+            except Exception as ex:
                 pass
         
         if has_3d:
@@ -54,5 +56,6 @@ def calc_conjugation_features(mol):
         adj = nx.to_numpy_array(sub, weight=None)
         res["Conjugation_GraphEnergy"] = float(np.sum(np.abs(np.linalg.eigvalsh(adj))))
         return res
-    except Exception:
+    except Exception as e:
+        res["Conjugation_Error"] = str(e)
         return res
