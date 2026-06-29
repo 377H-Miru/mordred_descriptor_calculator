@@ -24,24 +24,24 @@ def main():
     parser.add_argument('--id-col', '--name-col', dest='id_col', help='Column name for compound ID/name')
     parser.add_argument('--config', help='JSON configuration file path')
     
-    parser.add_argument('--seed', type=int, default=42, help='Random seed for 3D coordinate embedding (default: 42)')
-    parser.add_argument('--workers', type=int, default=1, help='Number of parallel worker processes (default: 1)')
-    parser.add_argument('--chunksize', type=int, default=1000, help='Chunk size for processing rows (default: 1000)')
+    parser.add_argument('--seed', type=int, help='Random seed for 3D coordinate embedding (default: 42)')
+    parser.add_argument('--workers', type=int, help='Number of parallel worker processes (default: 1)')
+    parser.add_argument('--chunksize', type=int, help='Chunk size for processing rows (default: 1000)')
     parser.add_argument('--no-optimize', action='store_true', help='Disable 3D geometry force field optimization')
     parser.add_argument('--overwrite', action='store_true', help='Overwrite output file and error log if they exist')
     
     # Standardize & Desalt groups
     std_group = parser.add_mutually_exclusive_group()
-    std_group.add_argument('--standardize', action='store_true', dest='standardize', default=True, help='Apply RDKit MolStandardize cleanup (default: True)')
+    std_group.add_argument('--standardize', action='store_true', dest='standardize', default=None, help='Apply RDKit MolStandardize cleanup (default: True)')
     std_group.add_argument('--no-standardize', action='store_false', dest='standardize', help='Disable standardization')
     
     desalt_group = parser.add_mutually_exclusive_group()
-    desalt_group.add_argument('--desalt', action='store_true', dest='desalt', default=True, help='Remove salts / keep largest fragment (default: True)')
+    desalt_group.add_argument('--desalt', action='store_true', dest='desalt', default=None, help='Remove salts / keep largest fragment (default: True)')
     desalt_group.add_argument('--no-desalt', action='store_false', dest='desalt', help='Disable desalting')
     
     parser.add_argument('--output-format', choices=['csv', 'tsv'], help='Output format (default: auto-detected from extension)')
     
-    # Computation modes (Mutually exclusive 2D / 3D flags)
+    # Computation modes
     mode_group = parser.add_argument_group('Computation Modes')
     dim_group = mode_group.add_mutually_exclusive_group()
     dim_group.add_argument('--only-2d', action='store_true', help='Explicitly specify 2D descriptors only without 3D embedding')
@@ -52,11 +52,14 @@ def main():
     
     # Input/Output filtering
     io_group = parser.add_argument_group('Output Filtering & Formatting')
-    io_group.add_argument('--keep-input-cols', action='store_true', default=True, help='Keep all input columns in output (default: True)')
+    keep_group = io_group.add_mutually_exclusive_group()
+    keep_group.add_argument('--keep-input-cols', action='store_true', dest='keep_input_cols', default=None, help='Keep all input columns in output (default: True)')
+    keep_group.add_argument('--no-keep-input-cols', action='store_false', dest='keep_input_cols', help='Do not keep extra input columns')
+    
     io_group.add_argument('--minimal-output', action='store_true', help='Keep only ID, canonical_smiles, and descriptors in output')
     io_group.add_argument('--drop-all-na', action='store_true', help='Drop descriptor columns where all values are NaN')
     io_group.add_argument('--drop-constant', action='store_true', help='Drop descriptor columns with constant values')
-    io_group.add_argument('--missing-value', choices=['nan', 'blank'], default='nan', help='Format missing descriptor values as NaN or blank string')
+    io_group.add_argument('--missing-value', choices=['nan', 'blank'], default=None, help='Format missing descriptor values as NaN or blank string')
     
     # Logging
     log_group = parser.add_mutually_exclusive_group()
@@ -97,9 +100,13 @@ def main():
     if not os.path.exists(input_file):
         sys.exit(f"Error: Input file '{input_file}' does not exist.")
         
-    if args.workers <= 0:
+    seed = args.seed if args.seed is not None else config.get('seed', 42)
+    workers = args.workers if args.workers is not None else config.get('workers', 1)
+    chunksize = args.chunksize if args.chunksize is not None else config.get('chunksize', 1000)
+    
+    if workers <= 0:
         sys.exit("Error: --workers must be > 0.")
-    if args.chunksize <= 0:
+    if chunksize <= 0:
         sys.exit("Error: --chunksize must be > 0.")
 
     # Computation mode flags resolution
@@ -108,16 +115,14 @@ def main():
         include_3d = False
         
     ignore_3d = not include_3d
-    include_conjugation = (args.include_conjugation or config.get('include_conjugation', False)) and not args.mordred_only
-    optimize = not args.no_optimize and config.get('optimize', True)
-    standardize = args.standardize
-    desalt = args.desalt
-    seed = args.seed
-    chunksize = args.chunksize
-    workers = args.workers
-    overwrite = args.overwrite
+    include_conjugation = (args.include_conjugation or config.get('include_conjugation', False)) and not (args.mordred_only or config.get('mordred_only', False))
+    optimize = not (args.no_optimize or config.get('no_optimize', False)) and config.get('optimize', True)
     
-    output_format = args.output_format
+    standardize = args.standardize if args.standardize is not None else config.get('standardize', True)
+    desalt = args.desalt if args.desalt is not None else config.get('desalt', True)
+    overwrite = args.overwrite or config.get('overwrite', False)
+    
+    output_format = args.output_format or config.get('output_format')
     if not output_format:
         ext = os.path.splitext(output_file)[1].lower()
         output_format = 'tsv' if ext in ['.tsv', '.txt'] else 'csv'
@@ -163,6 +168,16 @@ def main():
         print(f"\nProcessing {input_file} -> {output_file}")
         print(f"Settings: 3D={include_3d}, Conjugation={include_conjugation}, Standardize={standardize}, Desalt={desalt}, Workers={workers}")
 
+    # Output column formatting options
+    minimal_output = args.minimal_output or config.get('minimal_output', False)
+    keep_input_cols = args.keep_input_cols if args.keep_input_cols is not None else config.get('keep_input_cols', True)
+    if minimal_output:
+        keep_input_cols = False
+
+    drop_all_na = args.drop_all_na or config.get('drop_all_na', False)
+    drop_constant = args.drop_constant or config.get('drop_constant', False)
+    missing_value = args.missing_value or config.get('missing_value', 'nan')
+
     for chunk in pd.read_csv(input_file, sep=sep, engine='python', chunksize=chunksize):
         tasks = []
         for i, row in enumerate(chunk.to_dict('records')):
@@ -187,12 +202,10 @@ def main():
                 errors.append(err)
                 
         if mols:
-            # Compute Mordred descriptors with error handling
             try:
                 m_df = calc.pandas(mols, nproc=workers, quiet=args.quiet)
                 m_df = m_df.apply(pd.to_numeric, errors='coerce')
             except Exception as me:
-                # Log mordred stage failure for all mols in chunk
                 for idx, p in enumerate(props):
                     mol_id = str(p.get(id_col)) if id_col and id_col in p else f"ID_{global_count + idx}"
                     errors.append({
@@ -209,7 +222,6 @@ def main():
                     err_df.to_csv(err_file, sep=err_sep, index=False, mode='a', header=not os.path.exists(err_file), encoding='utf-8-sig')
                 sys.exit(f"Error during Mordred calculation stage: {me}")
 
-            # Compute conjugation features if enabled
             if include_conjugation:
                 if workers <= 1:
                     c_list = list(map(calc_conjugation_features, mols))
@@ -220,8 +232,7 @@ def main():
             else:
                 c_df = pd.DataFrame()
                 
-            # Prepare properties / metadata DataFrame
-            if args.minimal_output:
+            if not keep_input_cols:
                 meta_records = []
                 for i, p in enumerate(props):
                     mol_id = str(p.get(id_col)) if id_col and id_col in p else f"ID_{global_count + i}"
@@ -237,14 +248,13 @@ def main():
                 
             final_df = pd.concat(dfs_to_concat, axis=1)
             
-            # Post-processing filters
-            if args.drop_all_na:
+            if drop_all_na:
                 final_df = final_df.dropna(how='all', axis=1)
-            if args.drop_constant:
+            if drop_constant:
                 numeric_cols = final_df.select_dtypes(include=[np.number]).columns
                 constant_cols = [c for c in numeric_cols if final_df[c].nunique(dropna=False) <= 1]
                 final_df = final_df.drop(columns=constant_cols)
-            if args.missing_value == 'blank':
+            if missing_value == 'blank':
                 final_df = final_df.fillna('')
                 
             out_sep = "," if output_format == 'csv' else "\t"

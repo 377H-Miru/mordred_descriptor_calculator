@@ -75,7 +75,10 @@ def test_cli_config_and_tsv_format(tmp_path):
         "input_path": str(input_csv),
         "output_path": str(output_tsv),
         "smiles_col": "smiles",
-        "id_col": "mol_id"
+        "id_col": "mol_id",
+        "workers": 1,
+        "standardize": True,
+        "desalt": True
     }
     with open(config_json, "w", encoding="utf-8") as f:
         json.dump(cfg, f)
@@ -87,14 +90,14 @@ def test_cli_config_and_tsv_format(tmp_path):
     out_df = pd.read_csv(output_tsv, sep="\t")
     assert len(out_df) == 1
 
-def test_cli_minimal_output_and_workers_2(tmp_path):
+def test_cli_minimal_output_and_no_keep_input_cols(tmp_path):
     input_csv = tmp_path / "input.csv"
     output_csv = tmp_path / "output.csv"
     
     df = pd.DataFrame({"smiles": ["CCO", "CCC"], "extra_col": ["val1", "val2"]})
     df.to_csv(input_csv, index=False)
     
-    cmd = CMD + ["--input", str(input_csv), "--output", str(output_csv), "--minimal-output", "--workers", "2", "--overwrite"]
+    cmd = CMD + ["--input", str(input_csv), "--output", str(output_csv), "--no-keep-input-cols", "--workers", "2", "--overwrite"]
     res = subprocess.run(cmd, capture_output=True, text=True)
     assert res.returncode == 0
     out_df = pd.read_csv(output_csv)

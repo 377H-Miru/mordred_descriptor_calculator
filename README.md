@@ -11,7 +11,7 @@
 ---
 
 ## 主な機能・特徴
-- **柔軟な計算モード**: デフォルトは計算が高速で安定した 2D モード（`--only-2d`）。必要に応じて `--include-3d` や `--include-conjugation` を指定可能（`--only-2d` と `--include-3d` は排他的オプション）。
+- **柔軟な計算モード**: デフォルトは計算が高速で安定した 2D モード。必要に応じて `--include-3d` や `--include-conjugation` を指定可能（`--only-2d` と `--include-3d` は排他的オプション）。
 - **構造化エラーハンドリングと透過性**: SMILESパース、分子標準化、脱塩、3D座標生成、力場最適化、Mordred計算の各段階（`stage`）で発生した例外を記録し、`.errors.csv` / `.errors.tsv` へ出力。共役系計算中の例外も `Conjugation_Error` 列へ明示的に記録され、正常な非共役分子と区別されます。
 - **モダンなPython互換性**: 近年の NumPy バージョンで非推奨・削除された `np.product` 等のエイリアスに対する自動互換性シムを内蔵。
 
@@ -63,13 +63,23 @@ mordred-desc \
   "smiles_col": "smiles",
   "id_col": "compound_id",
   "include_3d": false,
-  "include_conjugation": true
+  "include_conjugation": true,
+  "workers": 2,
+  "standardize": true,
+  "desalt": true,
+  "overwrite": true
 }
 ```
 実行:
 ```bash
-mordred-desc --config job_config.json --overwrite
+mordred-desc --config job_config.json
 ```
+
+#### Config JSON で指定可能なパラメータ一覧:
+CLIの全オプションに対応しています。CLI引数と併用された場合は CLI引数が優先されます。
+- `input_path` / `input`, `output_path` / `output`, `smiles_col`, `id_col` / `name_col`
+- `seed`, `workers`, `chunksize`, `no_optimize`, `standardize`, `desalt`
+- `include_3d`, `include_conjugation`, `mordred_only`, `keep_input_cols`, `minimal_output`, `overwrite`, `output_format`
 
 ---
 
@@ -94,7 +104,7 @@ mordred-desc --config job_config.json --overwrite
 
 ### 正常出力 (`output.csv` / `output.tsv`)
 - デフォルト（`--keep-input-cols` 有効）では、元の入力列すべてに加え、`canonical_smiles`（脱塩・標準化適用後の正規化SMILES）および計算された記述子列が出力されます。
-- `--minimal-output` を指定すると、`ID`, `canonical_smiles`, および記述子列のみに削減されます。
+- 元の入力列を出力しない場合は `--no-keep-input-cols` または `--minimal-output` を指定します（`ID`, `canonical_smiles`, および記述子列のみ出力）。
 
 ### エラーログ (`output.csv.errors.csv` / `output.tsv.errors.tsv`)
 計算過程でエラーが発生した分子は正常出力から除外され、以下の構造化フォーマットで記録されます。
