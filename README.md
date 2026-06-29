@@ -123,6 +123,12 @@ CLIの全オプションに対応しています。CLI引数と併用された�
 
 ---
 
+## サードパーティ依存関係 (Third-party dependencies)
+本ツールは、SMILESのパース、分子前処理、座標計算に RDKit、分子記述子計算に Mordred を利用しています。
+RDKit は BSD 系のオープンソースライセンスで配布されています。
+
+---
+
 ## ライセンス (License)
 本プロジェクトは [MIT License](LICENSE) のもとで公開されています。
 
