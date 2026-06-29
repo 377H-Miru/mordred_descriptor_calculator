@@ -15,4 +15,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configurable parallel worker process management and safe sequential fallback.
 - Support for custom conjugation descriptors and 2D/3D computation modes (`--only-2d`, `--include-3d`, `--include-conjugation`).
 - Full test suite with unit tests and CLI integration tests.
-- GitHub Actions CI workflow for Python 3.10 and 3.11.
+- Added GitHub Actions CI workflow for Python 3.10.
