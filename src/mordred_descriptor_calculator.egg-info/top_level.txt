@@ -1,0 +1,1 @@
+mordred_descriptor_calculator

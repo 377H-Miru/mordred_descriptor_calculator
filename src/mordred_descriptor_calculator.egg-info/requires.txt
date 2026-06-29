@@ -1,0 +1,6 @@
+rdkit
+mordred
+networkx
+pandas
+numpy
+tqdm

@@ -1,0 +1,5 @@
+smiles,compound_id
+CCO,MOL001
+c1ccccc1,MOL002
+CO.[Na+].[Cl-],MOL003
+INVALID_SMILES,MOL004

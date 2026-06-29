@@ -1,0 +1,16 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+src/mordred_descriptor_calculator/__init__.py
+src/mordred_descriptor_calculator/cli.py
+src/mordred_descriptor_calculator/compat.py
+src/mordred_descriptor_calculator/conjugation.py
+src/mordred_descriptor_calculator/core.py
+src/mordred_descriptor_calculator.egg-info/PKG-INFO
+src/mordred_descriptor_calculator.egg-info/SOURCES.txt
+src/mordred_descriptor_calculator.egg-info/dependency_links.txt
+src/mordred_descriptor_calculator.egg-info/entry_points.txt
+src/mordred_descriptor_calculator.egg-info/requires.txt
+src/mordred_descriptor_calculator.egg-info/top_level.txt
+tests/test_calculate_descriptors.py

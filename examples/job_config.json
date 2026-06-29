@@ -1,0 +1,9 @@
+{
+  "input_path": "examples/sample.csv",
+  "output_path": "examples/output_descriptors.csv",
+  "smiles_col": "smiles",
+  "id_col": "compound_id",
+  "include_3d": false,
+  "include_conjugation": true,
+  "optimize": false
+}
