@@ -7,8 +7,14 @@ import pandas as pd
 
 CMD = [sys.executable, "-m", "mordred_descriptor_calculator.cli"]
 
+def run_cli(args):
+    env = os.environ.copy()
+    src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src"))
+    env["PYTHONPATH"] = src_dir + os.pathsep + env.get("PYTHONPATH", "")
+    return subprocess.run(CMD + args, capture_output=True, text=True, env=env)
+
 def test_cli_help():
-    res = subprocess.run(CMD + ["--help"], capture_output=True, text=True)
+    res = run_cli(["--help"])
     assert res.returncode == 0
     assert "Mordred Descriptor Calculator" in res.stdout
 
@@ -19,8 +25,8 @@ def test_cli_execution_and_overwrite(tmp_path):
     df = pd.DataFrame({"smiles": ["CCO", "INVALID", "c1ccccc1"], "id": ["M1", "M2", "M3"]})
     df.to_csv(input_csv, index=False)
     
-    cmd = CMD + ["--input", str(input_csv), "--output", str(output_csv), "--smiles-col", "smiles", "--id-col", "id", "--only-2d", "--overwrite"]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    cmd_args = ["--input", str(input_csv), "--output", str(output_csv), "--smiles-col", "smiles", "--id-col", "id", "--only-2d", "--overwrite"]
+    res = run_cli(cmd_args)
     assert res.returncode == 0
     assert os.path.exists(output_csv)
     
@@ -35,7 +41,7 @@ def test_cli_execution_and_overwrite(tmp_path):
     assert err_df.iloc[0]["stage"] == "parse"
 
 def test_cli_mutually_exclusive_2d_3d():
-    res = subprocess.run(CMD + ["--input", "dummy.csv", "--output", "out.csv", "--only-2d", "--include-3d"], capture_output=True, text=True)
+    res = run_cli(["--input", "dummy.csv", "--output", "out.csv", "--only-2d", "--include-3d"])
     assert res.returncode != 0
     assert "not allowed with argument" in res.stderr or "not allowed with argument" in res.stdout
 
@@ -45,8 +51,8 @@ def test_cli_include_3d_no_optimize(tmp_path):
     df = pd.DataFrame({"smiles": ["CCO"]})
     df.to_csv(input_csv, index=False)
     
-    cmd = CMD + ["--input", str(input_csv), "--output", str(output_csv), "--include-3d", "--no-optimize", "--overwrite"]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    cmd_args = ["--input", str(input_csv), "--output", str(output_csv), "--include-3d", "--no-optimize", "--overwrite"]
+    res = run_cli(cmd_args)
     assert res.returncode == 0
     assert os.path.exists(output_csv)
 
@@ -56,8 +62,8 @@ def test_cli_include_conjugation(tmp_path):
     df = pd.DataFrame({"smiles": ["c1ccccc1"]})
     df.to_csv(input_csv, index=False)
     
-    cmd = CMD + ["--input", str(input_csv), "--output", str(output_csv), "--include-conjugation", "--overwrite"]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    cmd_args = ["--input", str(input_csv), "--output", str(output_csv), "--include-conjugation", "--overwrite"]
+    res = run_cli(cmd_args)
     assert res.returncode == 0
     out_df = pd.read_csv(output_csv)
     assert "Conjugation_Count" in out_df.columns
@@ -83,8 +89,8 @@ def test_cli_config_and_tsv_format(tmp_path):
     with open(config_json, "w", encoding="utf-8") as f:
         json.dump(cfg, f)
         
-    cmd = CMD + ["--config", str(config_json), "--output-format", "tsv", "--overwrite"]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    cmd_args = ["--config", str(config_json), "--output-format", "tsv", "--overwrite"]
+    res = run_cli(cmd_args)
     assert res.returncode == 0
     assert os.path.exists(output_tsv)
     out_df = pd.read_csv(output_tsv, sep="\t")
@@ -97,8 +103,8 @@ def test_cli_minimal_output_and_no_keep_input_cols(tmp_path):
     df = pd.DataFrame({"smiles": ["CCO", "CCC"], "extra_col": ["val1", "val2"]})
     df.to_csv(input_csv, index=False)
     
-    cmd = CMD + ["--input", str(input_csv), "--output", str(output_csv), "--no-keep-input-cols", "--workers", "2", "--overwrite"]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    cmd_args = ["--input", str(input_csv), "--output", str(output_csv), "--no-keep-input-cols", "--workers", "2", "--overwrite"]
+    res = run_cli(cmd_args)
     assert res.returncode == 0
     out_df = pd.read_csv(output_csv)
     assert "extra_col" not in out_df.columns
